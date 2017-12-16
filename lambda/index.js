@@ -9,6 +9,7 @@
  **/
 
 'use strict';
+let http = require('http');
 
 const Alexa = require('alexa-sdk');
 
@@ -50,13 +51,33 @@ const handlers = {
         console.log(this.event.request.intent.slots.city.value)
         let city = this.event.request.intent.slots.city.value;
         
-        const partyArr = this.t('PARTIES');
-        const partyIndex = Math.floor(Math.random() * partyArr.length);
-        const randomFact = partyArr[partyIndex];
-    
-        // Create speech output
-        const speechOutput = this.t('GET_PARTY_DETAILS') + randomFact;
-        this.emit(':tellWithCard', speechOutput, this.t('PARTY_DETAILS'), randomFact);
+        const url = `http://city-party-api.herokuapp.com/api/party/${city}`;
+        console.log(url)
+
+        const _this = this;        
+        http.get(url, function(res) {
+            res.on('data', function (body) {
+                body = JSON.parse(body);
+                console.log('BODY: ' + body);
+
+                let partyDetails, speechOutput; 
+                if(body.length) {
+                    const partyArr = _this.t('PARTIES');
+                    const partyIndex = Math.floor(Math.random() * partyArr.length);
+                    partyDetails = partyArr[partyIndex];
+                    speechOutput = _this.t('GET_PARTY_DETAILS') + partyDetails;
+                } else {
+                    partyDetails = `Sorry could not find any parties in ${city} yet. Please check back later`;
+                    speechOutput = partyDetails;
+                }
+        
+                // Create speech output
+                _this.emit(':tellWithCard', speechOutput, _this.t('PARTY_DETAILS'), partyDetails);
+
+            })
+        });
+
+        
         
     },
     'AMAZON.HelpIntent': function () {
